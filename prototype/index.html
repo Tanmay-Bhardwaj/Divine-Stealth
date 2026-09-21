@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Divine Stealth: Reborn — Suspicion System Prototype</title>
+<style>
+  :root{
+    --bg:#0b0e13; --panel:#12161f; --panel2:#171c27; --line:#232b3a;
+    --ink:#c9d4e3; --dim:#6b7688; --gold:#d9b25c; --amber:#e09a3c; --red:#d95757;
+    --good:#5cc98f; --blue:#5c9fd9; --font:'Segoe UI',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--font);display:flex;flex-direction:column;align-items:center;min-height:100vh}
+  header{width:100%;max-width:1280px;padding:14px 18px 6px;display:flex;justify-content:space-between;align-items:baseline}
+  header h1{font-size:17px;letter-spacing:2px;color:var(--gold);font-weight:600}
+  header .sub{color:var(--dim);font-size:12px}
+  #wrap{display:flex;gap:12px;padding:8px 18px 18px;width:100%;max-width:1280px}
+  #gamecol{flex:1;min-width:0}
+  canvas{background:#0d1119;border:1px solid var(--line);border-radius:8px;width:100%;display:block;cursor:crosshair}
+  #controls{margin-top:8px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:11.5px;color:var(--dim);line-height:1.7}
+  #controls b{color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:11px}
+  #side{width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:10px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .card h2{font-size:10.5px;letter-spacing:1.6px;color:var(--dim);text-transform:uppercase;margin-bottom:8px}
+  .meterrow{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+  .meterrow label{width:86px;font-size:11.5px;color:var(--dim)}
+  .bar{flex:1;height:9px;background:#0a0d13;border-radius:5px;overflow:hidden;border:1px solid var(--line)}
+  .bar>div{height:100%;border-radius:5px;transition:width .3s}
+  #susHidden{font-size:11px;color:var(--dim);font-style:italic;margin-bottom:6px}
+  .budget{display:flex;gap:14px;font-size:11.5px}
+  .budget .b{display:flex;align-items:center;gap:5px;color:var(--dim)}
+  .dot{width:9px;height:9px;border-radius:50%;background:#2a3346;display:inline-block}
+  .dot.on{background:var(--gold);box-shadow:0 0 5px rgba(217,178,92,.6)}
+  #evlist{display:flex;flex-direction:column;gap:6px;max-height:170px;overflow-y:auto}
+  .ev{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:11px}
+  .ev .t{display:flex;justify-content:space-between;margin-bottom:3px}
+  .ev .tier-hard{color:var(--red);font-weight:700}
+  .ev .tier-soft{color:var(--amber)}
+  .ev .tier-rumor{color:var(--dim)}
+  .ev .reachbar{height:5px;background:#0a0d13;border-radius:3px;margin:4px 0;overflow:hidden}
+  .ev .reachbar>div{height:100%;background:var(--red)}
+  .ev button{background:#20293a;border:1px solid #33405a;color:var(--ink);font-size:10px;border-radius:4px;padding:2px 7px;cursor:pointer;margin-right:4px}
+  .ev button:hover{background:#2c3a55}
+  .ev button:disabled{opacity:.35;cursor:default}
+  #log{font-family:Consolas,monospace;font-size:10px;color:#8fa0b8;max-height:150px;overflow-y:auto;line-height:1.55;white-space:pre-wrap}
+  #log .warn{color:var(--amber)} #log .bad{color:var(--red)} #log .good{color:var(--good)}
+  #toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:rgba(18,22,31,.95);border:1px solid var(--gold);color:var(--gold);padding:8px 20px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .4s;pointer-events:none;z-index:50}
+  #overlay{position:fixed;inset:0;background:rgba(4,5,8,.94);display:none;align-items:center;justify-content:center;z-index:100}
+  #overlay .panel{max-width:560px;width:92%;background:var(--panel);border:1px solid var(--gold);border-radius:10px;padding:28px 32px;text-align:center}
+  #overlay h1{font-size:22px;letter-spacing:6px;color:var(--gold);margin-bottom:4px;font-weight:600}
+  #overlay .oathline{color:var(--dim);font-style:italic;font-size:13px;margin-bottom:18px}
+  #chain{text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px 16px;font-size:12px;margin-bottom:14px}
+  #chain h3{font-size:10.5px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;margin-bottom:7px}
+  #chain ol{margin-left:18px;color:var(--ink)} #chain li{margin-bottom:4px}
+  #chain .hint{margin-top:9px;color:var(--gold);font-size:11.5px}
+  #keptlost{display:flex;gap:10px;margin-bottom:18px;font-size:11.5px;text-align:left}
+  #keptlost>div{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 12px}
+  #keptlost h4{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:5px}
+  #keptlost .k h4{color:var(--good)} #keptlost .l h4{color:var(--red)}
+  #keptlost ul{list-style:none;color:var(--dim)} #keptlost li{margin-bottom:2px}
+  #restartBtn{background:var(--gold);color:#141005;border:none;font-size:13px;letter-spacing:1px;padding:10px 30px;border-radius:6px;cursor:pointer;font-weight:700}
+  #restartBtn:hover{filter:brightness(1.12)}
+  .statline{font-size:11px;color:var(--dim);display:flex;justify-content:space-between;margin-bottom:3px}
+  .statline span:last-child{color:var(--ink)}
+  #renewbanner{display:none;color:var(--good);font-size:12px;margin-top:6px;text-align:center;letter-spacing:1px}
+</style>
+</head>
+<body>
+<header>
+  <h1>DIVINE STEALTH: REBORN</h1>
+  <div class="sub">Suspicion &amp; Evidence Simulation — gameplay prototype of System Spec §1–§3</div>
+</header>
+
+<div id="wrap">
+  <div id="gamecol">
+    <canvas id="cv" width="900" height="560"></canvas>
+    <div id="controls">
+      <b>WASD</b> move &nbsp; <b>1</b> Nudge nearest light (fix faulty = mundane / flicker healthy = suspicious) &nbsp;
+      <b>2</b> Insight (reveal sightlines &amp; filmers, chain penalty if spammed) &nbsp; <b>3</b> Mend injured (needs proximity) &nbsp;
+      <b>Q</b> toggle med-kit prop (legalizes Mend) &nbsp; <b>4</b> Veil cameras 4s (35% flag risk) &nbsp;
+      <b>5</b> OVERT ACT — levitate (stops muggings instantly… if you dare) &nbsp; <b>E</b> mundane help: first-aid / non-lethal takedown (hold near target) &nbsp;
+      <b>T</b> designer view (true values)
+    </div>
+  </div>
+
+  <div id="side">
+    <div class="card">
+      <h2>Oath Status — Day <span id="dayN">1</span>, <span id="clock">06:00</span></h2>
+      <div id="susHidden">The streets feel calm. (Suspicion hidden below 60)</div>
+      <div class="meterrow" id="susRow" style="display:none">
+        <label>Suspicion</label><div class="bar"><div id="susBar" style="background:var(--amber);width:0%"></div></div><span id="susVal" style="font-size:11px;width:30px;text-align:right">0</span>
+      </div>
+      <div class="meterrow">
+        <label>Goodness</label><div class="bar"><div id="goodBar" style="background:var(--good);width:0%"></div></div><span id="goodVal" style="font-size:11px;width:30px;text-align:right">0</span>
+      </div>
+      <div class="budget">
+        <div class="b">Nudge <span id="dNudge"></span></div>
+        <div class="b">Veil <span id="dVeil"></span></div>
+        <div class="b">Mend <span id="dMend"></span></div>
+        <div class="b" id="medkit" style="color:var(--dim)">🩹 kit: OFF</div>
+      </div>
+      <div id="renewbanner">✦ DISTRICT RENEWED — the city sings ✦</div>
+    </div>
+
+    <div class="card">
+      <h2>Evidence Ledger</h2>
+      <div id="evlist"><div style="font-size:11px;color:var(--dim)">No evidence exists. Keep it that way.</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Telemetry (dt.exposure.explain)</h2>
+      <div id="log"></div>
+    </div>
+
+    <div class="card" id="designer" style="display:none">
+      <h2>Designer View</h2>
+      <div class="statline"><span>Global Suspicion (true)</span><span id="dvSus">0</span></div>
+      <div class="statline"><span>District Suspicion</span><span id="dvDist">0</span></div>
+      <div class="statline"><span>Visibility mod (time)</span><span id="dvVis">1.0</span></div>
+      <div class="statline"><span>Witnesses in LOS now</span><span id="dvWit">0</span></div>
+      <div class="statline"><span>Cameras seeing you</span><span id="dvCam">0</span></div>
+      <div class="statline"><span>Insight chain (60s)</span><span id="dvChain">0</span></div>
+      <div class="statline"><span>Restarts this session</span><span id="dvRestart">0</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="overlay">
+  <div class="panel">
+    <h1>THE OATH BREAKS</h1>
+    <div class="oathline">"No mortal shall know my true nature." — and now they do.</div>
+    <div id="chain"><h3>How they knew</h3><ol id="chainList"></ol><div class="hint" id="chainHint"></div></div>
+    <div id="keptlost">
+      <div class="k"><h4>Kept</h4><ul><li>Goodness: <span id="keptGood"></span> — the city remembers</li><li>Everything you learned</li></ul></div>
+      <div class="l"><h4>Lost</h4><ul><li>Story progress to last Oath</li><li>Active evidence purged; Suspicion resets to 20</li></ul></div>
+    </div>
+    <button id="restartBtn">Return to the Oath</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+// ============ CONSTANTS (from System Design Specs §1–§3) ============
+const SPEC = {
+  MUNDANE_MOD:0.3, NIGHT_MOD:0.7,
+  W_CIV:1.0, W_GUARD:1.6, W_CAM:1.4,
+  GLOBAL_FRACTION:0.25,
+  DECAY_GLOBAL:6, DECAY_DISTRICT:10,
+  WARN_BAND:60, PROOF:100,
+  HARD_REACH_PROOF:100000, HARD_K:500000, SOFT_K:40000,
+  VEIL_FLAG_CHANCE:0.35, PHONE_FILM_CHANCE:0.4,
+  BUDGET:{nudge:3, veil:1, mend:1},
+  UPLOAD_WINDOW:10, // game-minutes ≈ real seconds here
+  RESTART_SUS:20,
+};
+const HOUR_REAL_SEC = 2.5;              // 1 game-hour = 2.5s → day = 60s
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+
+// ============ WORLD ============
+const walls = [ // Oldbridge block
+  {x:150,y:80,w:200,h:110},{x:520,y:60,w:160,h:90},{x:120,y:330,w:140,h:130},
+  {x:430,y:280,w:110,h:180},{x:660,y:340,w:170,h:120},{x:740,y:100,w:110,h:130},
+];
+const lights = [];
+for (const p of [[110,60],[380,140],[490,220],[640,180],[300,300],[600,470],[120,520],[850,300],[400,520],[820,60]])
+  lights.push({x:p[0],y:p[1],faulty:Math.random()<0.45,on:true,flick:0});
+const cams = [
+  {x:355,y:78,a:0.6,sw:0.9,r:150,fov:1.2,veil:0},
+  {x:680,y:152,a:2.5,sw:0.8,r:150,fov:1.2,veil:0},
+  {x:428,y:462,a:-0.9,sw:0.7,r:140,fov:1.2,veil:0},
+  {x:832,y:342,a:3.4,sw:0.9,r:150,fov:1.2,veil:0},
+];
+let player, civs, guards, incidents, evidence, logBuf, chain, S;
+let restarts = 0, keptGoodness = 12;
+
+function reset(fullWipe){
+  player = {x:80,y:490,fx:1,fy:0,levit:0};
+  civs = []; for(let i=0;i<14;i++) civs.push(spawnCiv());
+  guards = [
+    {x:200,y:250,wp:[[200,250],[420,250],[420,520],[200,520]],wi:0,a:0},
+    {x:700,y:280,wp:[[700,280],[880,280],[880,520],[560,520]],wi:0,a:0},
+  ];
+  incidents = []; evidence = []; chain = [];
+  S = {
+    day:1, hour:6, sus:fullWipe?0:SPEC.RESTART_SUS, dist:fullWipe?0:SPEC.RESTART_SUS,
+    goodness: fullWipe?12:keptGoodness,
+    budget:{...SPEC.BUDGET}, medkit:false,
+    insightUses:[], insightTimer:0, insightCd:0,
+    takedownFavor:true, designer:false, over:false, renewed:false,
+  };
+  if(fullWipe){ logBuf=[]; log('SESSION START — Oldbridge district sim. Raise Goodness. Stay unknown.'); }
+  else log(`OATH RESTART — Goodness ${Math.round(S.goodness)} kept. Suspicion resets to ${SPEC.RESTART_SUS}. The world is faintly uneasy.`,'warn');
+}
+function spawnCiv(){
+  return {x:60+Math.random()*(W-120), y:60+Math.random()*(H-120),
+          a:Math.random()*6.28, speed:14+Math.random()*14, seen:0, film:false, t:Math.random()*4};
+}
+
+// ============ UTIL ============
+const dist2=(a,b)=>{const dx=a.x-b.x,dy=a.y-b.y;return dx*dx+dy*dy;};
+function losBlocked(a,b){
+  for(const w of walls){
+    // sample line
+    const steps=14;
+    for(let i=1;i<steps;i++){
+      const x=a.x+(b.x-a.x)*i/steps, y=a.y+(b.y-a.y)*i/steps;
+      if(x>w.x&&x<w.x+w.w&&y>w.y&&y<w.y+w.h) return true;
+    }
+  } return false;
+}
+function inWall(x,y,r){ for(const w of walls){ if(x>w.x-r&&x<w.x+w.w+r&&y>w.y-r&&y<w.y+w.h+r) return true;} return false; }
+const isNight=()=> S.hour>=20||S.hour<6;
+const visMod =()=> isNight()?SPEC.NIGHT_MOD:1.0;
+function fmtClock(){ return String(Math.floor(S.hour)).padStart(2,'0')+':'+String(Math.floor((S.hour%1)*60)).padStart(2,'0'); }
+function log(msg,cls){
+  logBuf.push({t:`[d${S?S.day:1} ${S?fmtClock():'06:00'}] `,m:msg,c:cls||''});
+  if(logBuf.length>60) logBuf.shift();
+  const el=document.getElementById('log');
+  el.innerHTML=logBuf.map(l=>`<span class="${l.c}">${l.t}${l.m}</span>`).join('\n');
+  el.scrollTop=el.scrollHeight;
+}
+let toastT=0;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.opacity=1; toastT=2.4; }
+
+// ============ PERCEPTION ============
+function witnessesOf(pt){
+  const out=[];
+  for(const c of civs){
+    if(dist2(c,pt)<140*140 && !losBlocked(c,pt)){
+      const fx=Math.cos(c.a),fy=Math.sin(c.a);
+      const dx=pt.x-c.x,dy=pt.y-c.y,d=Math.hypot(dx,dy)||1;
+      if((fx*dx+fy*dy)/d > -0.2) out.push({e:c,w:SPEC.W_CIV,kind:'civilian'}); // wide awareness
+    }
+  }
+  for(const g of guards){
+    if(dist2(g,pt)<170*170 && !losBlocked(g,pt)){
+      const dx=pt.x-g.x,dy=pt.y-g.y,d=Math.hypot(dx,dy)||1;
+      if((Math.cos(g.a)*dx+Math.sin(g.a)*dy)/d > 0.1) out.push({e:g,w:SPEC.W_GUARD,kind:'guard'});
+    }
+  }
+  return out;
+}
+function camerasSeeing(pt){
+  const out=[];
+  for(const c of cams){
+    if(c.veil>0) continue;
+    const dx=pt.x-c.x,dy=pt.y-c.y,d=Math.hypot(dx,dy);
+    if(d<c.r && !losBlocked(c,pt)){
+      let da=Math.atan2(dy,dx)-c.a; da=Math.atan2(Math.sin(da),Math.cos(da));
+      if(Math.abs(da)<c.fov/2) out.push(c);
+    }
+  } return out;
+}
+
+// ============ ANOMALY PIPELINE (Spec §1.2–1.3) ============
+function anomaly(actName, base, mundane, opts={}){
+  if(S.over) return;
+  const pt = opts.at||player;
+  const spawnedThisAct = new Set(); // dedupe evidence per act per source type
+  const wits = witnessesOf(pt), seen = camerasSeeing(pt);
+  const vis = visMod();
+  let dDist=0, parts=[];
+  for(const w of wits){
+    const rep = 1+0.5*(w.e.seen||0); w.e.seen=(w.e.seen||0)+1;
+    const A = base*(mundane?SPEC.MUNDANE_MOD:1)*vis*rep;
+    dDist += A*w.w;
+    if(base>=6 && w.kind==='civilian' && !spawnedThisAct.has('testimony')){
+      spawnedThisAct.add('testimony');
+      spawnEvidence('testimony', base>=10?'hard':'soft', `${wits.length} witness account(s) — ${actName}`, false);
+    }
+  }
+  for(const c of seen){
+    const A = base*(mundane?SPEC.MUNDANE_MOD:1)*vis;
+    dDist += A*SPEC.W_CAM;
+    if(!spawnedThisAct.has('cctv')){
+      if(base>=10){ spawnedThisAct.add('cctv'); spawnEvidence('footage','hard',`CCTV footage (${seen.length} cam) — ${actName}`, true); }
+      else if(A>=2){ spawnedThisAct.add('cctv'); spawnEvidence('footage','soft',`CCTV footage — ${actName}`, true); }
+    }
+  }
+  // NPC phones: A>=2 raw and 3+ civilians nearby
+  if(base*(mundane?SPEC.MUNDANE_MOD:1)>=2){
+    const near = civs.filter(c=>dist2(c,pt)<130*130 && !losBlocked(c,pt));
+    if(near.length>=3){
+      let filmed=0;
+      for(const c of near) if(Math.random()<SPEC.PHONE_FILM_CHANCE){ c.film=true; filmed++; }
+      if(filmed){
+        log(`${filmed} bystander(s) raised their phones.`,'warn');
+        spawnEvidence('footage', base>=10?'hard':'soft', `${filmed} phone clip(s) — ${actName}`, true);
+      }
+    }
+  }
+  if(dDist>0){
+    const dGlob = dDist*SPEC.GLOBAL_FRACTION;
+    S.dist=Math.min(100,S.dist+dDist); S.sus=Math.min(100,S.sus+dGlob);
+    chain.push({d:S.day,t:fmtClock(),desc:`${actName} — seen by ${wits.length} witness(es), ${seen.length} camera(s) (+${dGlob.toFixed(1)} global)`});
+    if(chain.length>8) chain.shift();
+    log(`ACT ${actName} A=${base}${mundane?'×0.3(mundane)':''} wit=${wits.length} cams=${seen.length} ΔSus +${dGlob.toFixed(1)}g/+${dDist.toFixed(1)}d`, base>=6?'bad':'warn');
+    if(S.sus>=SPEC.PROOF) oathBreak('Suspicion reached 100 — the whole city is certain.');
+  } else if(base>0){
+    log(`ACT ${actName} — unwitnessed. The Oath cares about knowing, not doing. ΔSus 0`,'good');
+  }
+}
+
+// ============ EVIDENCE (Spec §1.5) ============
+let evId=400;
+function spawnEvidence(type,tier,desc,recorded){
+  const ev={id:'EV-0'+(++evId),type,tier,desc,reach:tier==='hard'?400:120,uploaded:false,
+            window:recorded?SPEC.UPLOAD_WINDOW:0, memory:!recorded, age:0, slowed:false, dead:false};
+  evidence.push(ev);
+  log(`EV_SPAWN ${ev.id} ${type}(${tier}) — ${desc}${recorded?` · upload in ${SPEC.UPLOAD_WINDOW} min`:''}`, tier==='hard'?'bad':'warn');
+  renderEvidence();
+}
+function tickEvidence(dt){
+  for(const ev of evidence){
+    if(ev.dead) continue;
+    ev.age+=dt;
+    if(ev.window>0){ ev.window-=dt/1.0; if(ev.window<=0){ ev.uploaded=true; log(`${ev.id} uploaded. Reach is growing.`,'bad'); } }
+    if(ev.uploaded){
+      const K = ev.tier==='hard'?SPEC.HARD_K:SPEC.SOFT_K;
+      const r = (ev.slowed?0.4:1.0)*1.1;
+      ev.reach += r*ev.reach*(1-ev.reach/K)*dt*0.55;
+      if(ev.tier==='hard' && ev.reach>=25000 && !ev.alerted){ ev.alerted=true; toast('▲ "It\'s spreading" — act now'); }
+      if(ev.tier==='hard' && ev.reach>=SPEC.HARD_REACH_PROOF)
+        oathBreak(`Hard proof went viral: ${ev.desc} (Reach ${Math.round(ev.reach/1000)}k)`);
+    }
+  }
+  renderEvidence();
+}
+function counterEvidence(id,mode){
+  const ev=evidence.find(e=>e.id===id); if(!ev||ev.dead) return;
+  if(mode==='steal'){
+    if(ev.uploaded){ toast('Too late — already online'); return; }
+    ev.dead=true; log(`${ev.id} destroyed before review. It never happened.`,'good');
+  } else if(mode==='takedown'){
+    if(!S.takedownFavor){ toast('Media favor already spent today'); return; }
+    S.takedownFavor=false; ev.slowed=true; log(`${ev.id} counter-narrative deployed — spread rate ×0.4.`,'good');
+  } else if(mode==='discredit'){
+    ev.dead=true; S.dist=Math.max(0,S.dist-4);
+    log(`${ev.id} witness discredited (−4 district). Gently.`,'good');
+  }
+  renderEvidence();
+}
+function renderEvidence(){
+  const live=evidence.filter(e=>!e.dead);
+  const el=document.getElementById('evlist');
+  if(!live.length){ el.innerHTML='<div style="font-size:11px;color:var(--dim)">No evidence exists. Keep it that way.</div>'; return; }
+  el.innerHTML=live.map(ev=>{
+    const K=ev.tier==='hard'?SPEC.HARD_REACH_PROOF:SPEC.SOFT_K;
+    const pct=ev.uploaded?Math.min(100,ev.reach/K*100):0;
+    return `<div class="ev"><div class="t"><span class="tier-${ev.tier}">${ev.tier.toUpperCase()} · ${ev.type}</span><span>${ev.id}</span></div>
+    <div style="color:var(--dim)">${ev.desc}</div>
+    ${ev.uploaded?`<div class="reachbar"><div style="width:${pct}%"></div></div><div style="color:var(--dim)">Reach ${Math.round(ev.reach).toLocaleString()}${ev.tier==='hard'?' / 100,000 = PROOF':''}</div>`
+      : ev.memory?`<div style="color:var(--dim)">witness memory — decays over days</div>`
+      :`<div style="color:var(--amber)">uploads in ${Math.max(0,ev.window).toFixed(0)} min</div>`}
+    <div style="margin-top:4px">
+      ${!ev.uploaded&&!ev.memory?`<button onclick="counterEvidence('${ev.id}','steal')">Steal footage</button>`:''}
+      ${ev.uploaded?`<button onclick="counterEvidence('${ev.id}','takedown')" ${S.takedownFavor?'':'disabled'}>Media favor (1/day)</button>`:''}
+      ${ev.memory?`<button onclick="counterEvidence('${ev.id}','discredit')">Discredit witness</button>`:''}
+    </div></div>`;
+  }).join('');
+}
+window.counterEvidence=counterEvidence;
+
+// ============ OATH BREAK ============
+function oathBreak(reason){
+  if(S.over) return;
+  S.over=true; keptGoodness=S.goodness; restarts++;
+  chain.push({d:S.day,t:fmtClock(),desc:reason});
+  document.getElementById('chainList').innerHTML =
+    chain.slice(-5).map(c=>`<li>d${c.d} ${c.t} — ${c.desc}</li>`).join('');
+  document.getElementById('chainHint').textContent =
+    '✦ Hint: acts with a mundane explanation score ×0.3 — and no witnesses means no sin. Toggle the med-kit (Q) before Mending in public.';
+  document.getElementById('keptGood').textContent = Math.round(keptGoodness);
+  document.getElementById('overlay').style.display='flex';
+}
+document.getElementById('restartBtn').onclick=()=>{
+  document.getElementById('overlay').style.display='none';
+  reset(false);
+};
+
+// ============ ACTIONS ============
+const keys={};
+addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase(); keys[k]=true;
+  if(S.over) return;
+  if(k==='1') actNudge();
+  if(k==='2') actInsight();
+  if(k==='3') actMend();
+  if(k==='4') actVeil();
+  if(k==='5') actOvert();
+  if(k==='q'){ S.medkit=!S.medkit; document.getElementById('medkit').textContent=`🩹 kit: ${S.medkit?'ON':'OFF'}`;
+               document.getElementById('medkit').style.color=S.medkit?'var(--good)':'var(--dim)'; }
+  if(k==='t'){ S.designer=!S.designer; document.getElementById('designer').style.display=S.designer?'block':'none'; }
+});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+function nearestLight(){ let best=null,bd=70*70; for(const l of lights){const d=dist2(l,player); if(d<bd){bd=d;best=l;}} return best; }
+function actNudge(){
+  if(S.budget.nudge<=0){ toast('No Nudge charges until dawn'); return; }
+  const l=nearestLight(); if(!l){ toast('No light close enough to Nudge'); return; }
+  S.budget.nudge--;
+  if(l.faulty){ l.faulty=false; l.on=true; S.goodness=Math.min(100,S.goodness+2);
+    anomaly('nudge (fixed faulty light)',0.5,true,{at:l});
+    log('Faulty light hums back to life. +2 Goodness. Just old wiring, surely.','good');
+  } else { l.flick=2.5;
+    anomaly('nudge (healthy light died for no reason)',2.0,false,{at:l});
+  }
+}
+function actInsight(){
+  if(S.insightCd>0){ toast('Insight cooling down'); return; }
+  S.insightCd=8; S.insightTimer=6;
+  const now=performance.now()/1000;
+  S.insightUses=S.insightUses.filter(t=>now-t<60); S.insightUses.push(now);
+  const extra=Math.max(0,S.insightUses.length-2);
+  if(extra>0){ anomaly(`insight chain (${S.insightUses.length} in 60s — they feel watched)`,1.5*extra,false); }
+  else log('Insight: sightlines revealed for 6s.');
+}
+function nearestIncident(type,r){ let best=null,bd=r*r; for(const i of incidents){ if(i.type!==type||i.done)continue; const d=dist2(i,player); if(d<bd){bd=d;best=i;} } return best; }
+function actMend(){
+  const inj=nearestIncident('injured',55); if(!inj){ toast('No one injured within reach'); return; }
+  if(S.budget.mend<=0){ toast('No Mend left today — try first aid (hold E)'); return; }
+  S.budget.mend--;
+  inj.done=true; S.goodness=Math.min(100,S.goodness+4);
+  if(S.medkit) { anomaly('mend (with first-aid cover)',1.0,false); log('Healed under cover of the kit. +4 Goodness.','good'); }
+  else { anomaly('MEND RAW — impossible recovery',6.0,false); log('They watched wounds close on their own. +4 Goodness, but…','bad'); }
+}
+function actVeil(){
+  if(S.budget.veil<=0){ toast('No Veil charges'); return; }
+  S.budget.veil--;
+  let n=0; for(const c of cams){ if(dist2(c,player)<200*200){ c.veil=4; n++; } }
+  log(`Veil: ${n} camera(s) blurred for 4s.`);
+  for(let i=0;i<n;i++) if(Math.random()<SPEC.VEIL_FLAG_CHANCE){
+    S.dist=Math.min(100,S.dist+5); S.sus=Math.min(100,S.sus+5*SPEC.GLOBAL_FRACTION*4); // flag is reviewed: hits global harder
+    chain.push({d:S.day,t:fmtClock(),desc:'security review flagged a camera "glitch" (Veil)'});
+    log('A reviewer flags the glitch. +5 district Suspicion.','warn');
+    if(S.sus>=SPEC.PROOF) oathBreak('Too many impossible glitches, all where you stood.');
+  }
+}
+function actOvert(){
+  player.levit=2.0;
+  const mug=nearestIncident('mugging',160);
+  if(mug){ mug.done=true; S.goodness=Math.min(100,S.goodness+4); log('The mugger flees what he cannot explain. +4 Goodness.','good'); }
+  anomaly('OVERT ACT — levitation',10,false);
+}
+
+// ============ INCIDENTS (good-deed sources) ============
+let incT=4;
+function tickIncidents(dt){
+  incT-=dt;
+  if(incT<=0 && incidents.filter(i=>!i.done).length<3){
+    incT=9+Math.random()*8;
+    const type=Math.random()<0.55?'injured':'mugging';
+    let x,y,tries=0; do{ x=60+Math.random()*(W-120); y=60+Math.random()*(H-120); tries++; }while(inWall(x,y,16)&&tries<30);
+    incidents.push({type,x,y,timer:type==='injured'?25:15,done:false,progress:0});
+    log(type==='injured'?'Someone is hurt nearby — help them (Mend 3, or hold E for first aid).':'A mugging is unfolding — stop it (hold E to subdue, or… 5).','warn');
+  }
+  for(const i of incidents){
+    i.timer-=dt;
+    if(i.done) continue;
+    // mundane resolution with E
+    if(keys['e'] && dist2(i,player)<55*55){
+      i.progress+=dt;
+      const need=i.type==='injured'?3:1.4;
+      if(i.progress>=need){
+        i.done=true; S.goodness=Math.min(100,S.goodness+(i.type==='injured'?3:4));
+        if(i.type==='mugging') anomaly('non-lethal takedown',1.0,true);
+        log(i.type==='injured'?'First aid, the mortal way. +3 Goodness. No anomaly.':'Mugger subdued, brave-citizen style. +4 Goodness.','good');
+      }
+    } else i.progress=Math.max(0,i.progress-dt*2);
+    if(i.timer<=0){ i.done=true; S.goodness=Math.max(0,S.goodness-3); log('You were too slow. −3 Goodness.','bad'); }
+  }
+  incidents=incidents.filter(i=>!(i.done&&i.timer<-2));
+}
+
+// ============ SIM LOOP ============
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  if(!S.over){
+    // time
+    const prevHour=S.hour;
+    S.hour+=dt/HOUR_REAL_SEC;
+    if(S.hour>=24){ S.hour-=24; S.day++;
+      S.sus=Math.max(0,S.sus-SPEC.DECAY_GLOBAL); S.dist=Math.max(0,S.dist-SPEC.DECAY_DISTRICT);
+      // memory decay
+      for(const ev of evidence) if(ev.memory&&!ev.dead&&ev.age>0){ if(ev.tier==='hard')ev.tier='soft'; else if(ev.tier==='soft')ev.tier='rumor'; else ev.dead=true; }
+      log(`MIDNIGHT DECAY −${SPEC.DECAY_GLOBAL}g/−${SPEC.DECAY_DISTRICT}d. Witness memories blur.`);
+      renderEvidence();
+    }
+    if(prevHour<6&&S.hour>=6 || (prevHour>S.hour&&S.hour>=6)){ /* dawn handled below */ }
+    if(Math.floor(prevHour)!==6&&Math.floor(S.hour)===6){ S.budget={...SPEC.BUDGET}; S.takedownFavor=true; log('DAWN — miracle budget refreshed.','good'); }
+
+    // player move
+    let mx=(keys['d']?1:0)-(keys['a']?1:0), my=(keys['s']?1:0)-(keys['w']?1:0);
+    if(mx||my){ const m=Math.hypot(mx,my); mx/=m; my/=m;
+      const sp=115*dt, nx=player.x+mx*sp, ny=player.y+my*sp;
+      if(!inWall(nx,player.y,9)) player.x=Math.max(14,Math.min(W-14,nx));
+      if(!inWall(player.x,ny,9)) player.y=Math.max(14,Math.min(H-14,ny));
+      player.fx=mx; player.fy=my;
+    }
+    if(player.levit>0) player.levit-=dt;
+    if(S.insightCd>0) S.insightCd-=dt;
+    if(S.insightTimer>0) S.insightTimer-=dt;
+
+    // civs wander
+    for(const c of civs){
+      c.t-=dt; if(c.t<=0){ c.t=2+Math.random()*4; c.a=Math.random()*6.28; }
+      const nx=c.x+Math.cos(c.a)*c.speed*dt, ny=c.y+Math.sin(c.a)*c.speed*dt;
+      if(!inWall(nx,ny,8)&&nx>20&&nx<W-20&&ny>20&&ny<H-20){c.x=nx;c.y=ny;} else c.a+=1.7;
+    }
+    // guards patrol
+    for(const g of guards){
+      const t=g.wp[g.wi], dx=t[0]-g.x, dy=t[1]-g.y, d=Math.hypot(dx,dy);
+      if(d<6) g.wi=(g.wi+1)%g.wp.length;
+      else { g.x+=dx/d*46*dt; g.y+=dy/d*46*dt; g.a=Math.atan2(dy,dx); }
+    }
+    // cams sweep
+    for(const c of cams){ if(c.veil>0)c.veil-=dt; c.a+=Math.sin(now/1400+c.x)*c.sw*dt*0.7; }
+    for(const l of lights) if(l.flick>0) l.flick-=dt;
+
+    tickIncidents(dt);
+    tickEvidence(dt);
+    if(S.goodness>=100&&!S.renewed){ S.renewed=true; document.getElementById('renewbanner').style.display='block';
+      log('DISTRICT RENEWED — Goodness 100. Passive suspicion decay improves here. You did this, and no one knows.','good'); }
+  }
+  if(toastT>0){ toastT-=dt; if(toastT<=0) document.getElementById('toast').style.opacity=0; }
+  draw(now); updateHud();
+  requestAnimationFrame(frame);
+}
+
+// ============ RENDER ============
+function draw(now){
+  const night=isNight();
+  ctx.clearRect(0,0,W,H);
+  // ground
+  ctx.fillStyle=night?'#0a0d15':'#11161f'; ctx.fillRect(0,0,W,H);
+  // goodness warms the ground subtly
+  ctx.fillStyle=`rgba(217,178,92,${S.goodness/100*0.06})`; ctx.fillRect(0,0,W,H);
+  // roads grid
+  ctx.strokeStyle='#1a2130'; ctx.lineWidth=26;
+  ctx.beginPath(); ctx.moveTo(0,270); ctx.lineTo(W,270); ctx.moveTo(470,0); ctx.lineTo(470,H); ctx.stroke();
+  // camera cones
+  for(const c of cams){
+    ctx.beginPath(); ctx.moveTo(c.x,c.y);
+    ctx.arc(c.x,c.y,c.r,c.a-c.fov/2,c.a+c.fov/2); ctx.closePath();
+    const seeing = camerasSeeing(player).includes(c);
+    ctx.fillStyle = c.veil>0?'rgba(120,130,150,0.05)': seeing?'rgba(217,87,87,0.13)':'rgba(92,159,217,0.08)';
+    ctx.fill();
+    ctx.fillStyle=c.veil>0?'#4a5468':'#5c9fd9';
+    ctx.fillRect(c.x-4,c.y-4,8,8);
+    if(c.veil>0){ ctx.fillStyle='#8fa0b8'; ctx.font='9px monospace'; ctx.fillText('VEILED',c.x-16,c.y-8); }
+  }
+  // guard cones (visible always — legibility)
+  for(const g of guards){
+    ctx.beginPath(); ctx.moveTo(g.x,g.y); ctx.arc(g.x,g.y,120,g.a-0.65,g.a+0.65); ctx.closePath();
+    ctx.fillStyle='rgba(224,154,60,0.07)'; ctx.fill();
+  }
+  // walls
+  for(const w of walls){
+    ctx.fillStyle='#1c2433'; ctx.fillRect(w.x,w.y,w.w,w.h);
+    ctx.strokeStyle='#2a3346'; ctx.strokeRect(w.x,w.y,w.w,w.h);
+  }
+  // lights
+  for(const l of lights){
+    const dead = l.faulty || l.flick>0 && Math.sin(now/40)>0;
+    if(!dead){ const grd=ctx.createRadialGradient(l.x,l.y,2,l.x,l.y,55);
+      grd.addColorStop(0,night?'rgba(255,214,140,0.28)':'rgba(255,214,140,0.10)'); grd.addColorStop(1,'transparent');
+      ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(l.x,l.y,55,0,7); ctx.fill(); }
+    ctx.fillStyle=dead?'#3a4152':'#ffd68c'; ctx.beginPath(); ctx.arc(l.x,l.y,3.5,0,7); ctx.fill();
+    if(l.faulty){ ctx.fillStyle='#6b7688'; ctx.font='8px monospace'; ctx.fillText('faulty',l.x-12,l.y-7); }
+  }
+  // incidents
+  for(const i of incidents){
+    if(i.done) continue;
+    const pulse=1+Math.sin(now/200)*0.15;
+    if(i.type==='injured'){ ctx.strokeStyle='#d95757'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(i.x,i.y,10*pulse,0,7); ctx.stroke();
+      ctx.fillStyle='#d95757'; ctx.font='bold 11px sans-serif'; ctx.fillText('+',i.x-3,i.y+4);
+      ctx.fillStyle='#c9d4e3'; ctx.font='9px sans-serif'; ctx.fillText('HELP',i.x-11,i.y-14);
+    } else { ctx.fillStyle='#d95757'; ctx.beginPath(); ctx.arc(i.x,i.y,7*pulse,0,7); ctx.fill();
+      ctx.fillStyle='#c9d4e3'; ctx.font='9px sans-serif'; ctx.fillText('MUGGING',i.x-20,i.y-12); }
+    if(i.progress>0){ ctx.strokeStyle='#5cc98f'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(i.x,i.y,14,-1.57,-1.57+i.progress/(i.type==='injured'?3:1.4)*6.28); ctx.stroke(); }
+    // timer
+    ctx.fillStyle='#6b7688'; ctx.font='8px monospace'; ctx.fillText(Math.ceil(i.timer)+'s',i.x+12,i.y+3);
+  }
+  // civilians
+  for(const c of civs){
+    ctx.fillStyle=c.film?'#e09a3c':'#5a6880';
+    ctx.beginPath(); ctx.arc(c.x,c.y,5.5,0,7); ctx.fill();
+    if(S.insightTimer>0){ // insight: show facing
+      ctx.strokeStyle='rgba(92,201,143,0.5)'; ctx.beginPath(); ctx.moveTo(c.x,c.y);
+      ctx.lineTo(c.x+Math.cos(c.a)*16,c.y+Math.sin(c.a)*16); ctx.stroke(); }
+    if(c.film){ ctx.font='9px sans-serif'; ctx.fillText('📱',c.x-4,c.y-8); }
+  }
+  // guards
+  for(const g of guards){ ctx.fillStyle='#e09a3c'; ctx.beginPath(); ctx.arc(g.x,g.y,6.5,0,7); ctx.fill();
+    ctx.fillStyle='#0b0e13'; ctx.font='bold 8px sans-serif'; ctx.fillText('G',g.x-2.5,g.y+3); }
+  // player
+  const py=player.y-(player.levit>0?Math.sin(Math.min(1,(2-player.levit))*3.14)*18:0);
+  if(player.levit>0){ ctx.fillStyle='rgba(217,178,92,0.25)'; ctx.beginPath(); ctx.ellipse(player.x,player.y+4,12,4,0,0,7); ctx.fill(); }
+  ctx.fillStyle='#d9b25c'; ctx.beginPath(); ctx.arc(player.x,py,7.5,0,7); ctx.fill();
+  ctx.strokeStyle='#0b0e13'; ctx.lineWidth=1.5; ctx.stroke();
+  // night dim
+  if(night){ ctx.fillStyle='rgba(5,8,18,0.35)'; ctx.fillRect(0,0,W,H); }
+  // seen indicator
+  const seen = camerasSeeing(player).length, wits=witnessesOf(player).length;
+  ctx.font='10px monospace'; ctx.fillStyle=seen?'#d95757':'#3a4152';
+  ctx.fillText(seen?`◉ ${seen} camera(s) can see you`:'◉ no cameras on you',12,H-26);
+  ctx.fillStyle=wits?'#e09a3c':'#3a4152';
+  ctx.fillText(wits?`👁 ${wits} potential witness(es)`:'👁 unobserved',12,H-12);
+}
+
+function dots(n,max){ let s=''; for(let i=0;i<max;i++) s+=`<span class="dot ${i<n?'on':''}"></span>`; return s; }
+function updateHud(){
+  document.getElementById('dayN').textContent=S.day;
+  document.getElementById('clock').textContent=fmtClock();
+  document.getElementById('goodBar').style.width=S.goodness+'%';
+  document.getElementById('goodVal').textContent=Math.round(S.goodness);
+  const show=S.sus>=SPEC.WARN_BAND;
+  document.getElementById('susRow').style.display=show?'flex':'none';
+  document.getElementById('susHidden').style.display=show?'none':'block';
+  if(show){ const b=document.getElementById('susBar');
+    b.style.width=S.sus+'%'; b.style.background=S.sus>=85?'var(--red)':'var(--amber)';
+    document.getElementById('susVal').textContent=Math.round(S.sus); }
+  document.getElementById('dNudge').innerHTML=dots(S.budget.nudge,SPEC.BUDGET.nudge);
+  document.getElementById('dVeil').innerHTML=dots(S.budget.veil,SPEC.BUDGET.veil);
+  document.getElementById('dMend').innerHTML=dots(S.budget.mend,SPEC.BUDGET.mend);
+  if(S.designer){
+    document.getElementById('dvSus').textContent=S.sus.toFixed(1);
+    document.getElementById('dvDist').textContent=S.dist.toFixed(1);
+    document.getElementById('dvVis').textContent=visMod().toFixed(1);
+    document.getElementById('dvWit').textContent=witnessesOf(player).length;
+    document.getElementById('dvCam').textContent=camerasSeeing(player).length;
+    const now=performance.now()/1000;
+    document.getElementById('dvChain').textContent=S.insightUses.filter(t=>now-t<60).length;
+    document.getElementById('dvRestart').textContent=restarts;
+  }
+}
+
+logBuf=[];
+reset(true);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
